@@ -16,9 +16,11 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
-  Shield
+  Shield,
+  X,
+  ShieldAlert
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 export default function ResultsPage() {
@@ -27,6 +29,19 @@ export default function ResultsPage() {
   const { results, isUnlocked, inputs } = useCalculatorStore();
   const [expandedFactors, setExpandedFactors] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Popup state
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupPosition, setPopupPosition] = useState<'bottom' | 'top'>('bottom');
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  const actionsRef = useRef<HTMLDivElement>(null);
+
+  const handleFindAgent = () => {
+    if (actionsRef.current) {
+      actionsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
 
   useEffect(() => {
     if (!isUnlocked || !results) {
@@ -37,6 +52,44 @@ export default function ResultsPage() {
     const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
   }, [isUnlocked, results, runId, navigate]);
+
+  // Scroll and timer listeners for the popup
+  useEffect(() => {
+    if (isLoading || isDismissed) return;
+
+    // 10 second timer to show popup
+    const timer = setTimeout(() => {
+      if (!isDismissed) {
+        setShowPopup(true);
+      }
+    }, 10000);
+
+    const handleScroll = () => {
+      if (isDismissed) return;
+
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+
+      // Show popup if scrolled past 10%
+      if (scrollPercent >= 10) {
+        setShowPopup(true);
+      }
+
+      // Switch position: if scrolled 80% or more, show at top; otherwise bottom
+      if (scrollPercent >= 80) {
+        setPopupPosition('top');
+      } else {
+        setPopupPosition('bottom');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [isLoading, isDismissed]);
 
   if (!results) return null;
 
@@ -215,7 +268,7 @@ export default function ResultsPage() {
               </div>
               
               {/* Card E: Actions */}
-              <div className="surface-card p-6 animate-slide-up" style={{ animationDelay: '0.5s' }}>
+              <div ref={actionsRef} className="surface-card p-6 animate-slide-up" style={{ animationDelay: '0.5s' }}>
                 <h2 className="text-lg font-semibold text-heading mb-5">Want more help?</h2>
                 
                 <div className="grid gap-3">
@@ -257,6 +310,109 @@ export default function ResultsPage() {
       </main>
       
       <Footer />
+
+      {/* ===== Agent Popup ===== */}
+      {showPopup && !isDismissed && (
+        <div
+          className={cn(
+            "fixed left-0 right-0 z-50 flex justify-center px-4 transition-all duration-500",
+            popupPosition === 'bottom'
+              ? "bottom-6 animate-[slideInBottom_0.4s_ease-out]"
+              : "top-[68px] animate-[slideInTop_0.4s_ease-out]"
+          )}
+          style={{
+            animation: popupPosition === 'bottom'
+              ? 'slideInBottom 0.4s ease-out'
+              : 'slideInTop 0.4s ease-out'
+          }}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-2xl bg-white border border-emerald-100 overflow-hidden"
+            style={{
+              boxShadow: '0 20px 60px -12px rgba(0,0,0,0.18), 0 0 0 1px rgba(16,185,129,0.12)',
+            }}
+          >
+            {/* Green accent bar at top */}
+            <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400" />
+
+            {/* Dismiss button */}
+            <button
+              onClick={() => { setIsDismissed(true); setShowPopup(false); }}
+              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors z-10"
+              aria-label="Dismiss"
+            >
+              <X className="w-3.5 h-3.5 text-gray-500" />
+            </button>
+
+            <div className="p-5">
+              {/* Header row */}
+              <div className="flex items-start gap-3 mb-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+                >
+                  <ShieldAlert className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 pr-6">
+                  <p className="text-sm font-bold text-gray-900 leading-snug">
+                    Save up to 30% more with a local agent
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Public results don't include private subsidies.
+                  </p>
+                </div>
+              </div>
+
+              {/* Agent avatars (trust signals) */}
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex -space-x-2">
+                  {['#6366f1','#ec4899','#f59e0b'].map((color, i) => (
+                    <div
+                      key={i}
+                      className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
+                      style={{ background: color }}
+                    >
+                      {['JM','SR','KL'][i]}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-xs text-gray-500">Licensed agents near you</span>
+              </div>
+
+              {/* Green CTA button with pulse */}
+              <button
+                onClick={() => {
+                  setIsDismissed(true);
+                  setShowPopup(false);
+                  handleFindAgent();
+                }}
+                className="animate-pulse-subtle w-full py-3 px-4 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+              >
+                Find a Nearby Agent
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              {/* Fine print */}
+              <p className="text-center text-xs text-gray-400 mt-2">
+                Free • No commitment required
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup keyframes injected inline */}
+      <style>{`
+        @keyframes slideInBottom {
+          from { opacity: 0; transform: translateY(100%); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInTop {
+          from { opacity: 0; transform: translateY(-100%); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
