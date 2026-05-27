@@ -23,7 +23,7 @@ interface CalculatorState {
 const initialInputs: Partial<CalculatorInputs> = {
   zipCode: '',
   state: '',
-  ageRange: '',
+  birthYear: '',
   currentlyInsured: null,
   householdSize: 1,
   incomeRange: '',

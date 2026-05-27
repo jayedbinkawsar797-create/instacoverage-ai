@@ -1,97 +1,128 @@
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCalculatorStore } from '@/stores/calculatorStore';
-import { Button } from '@/components/ui/button';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
-import { 
-  CheckCircle2, 
-  ArrowRight, 
-  Phone, 
-  MessageSquare, 
-  Mail,
-  TrendingUp,
-  DollarSign,
-  Sparkles,
-  ListChecks,
-  ChevronDown,
-  ChevronUp,
-  AlertCircle,
+import {
+  ArrowRight,
+  Info,
+  MapPin,
   Shield,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Users,
   X,
-  ShieldAlert
 } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Footer } from '@/components/Footer';
+import { Header } from '@/components/Header';
+import { useCalculatorStore } from '@/stores/calculatorStore';
 import { cn } from '@/lib/utils';
+import type { AgentProfile, MarketplacePlan } from '@/types/calculator';
+
+const agents: AgentProfile[] = [
+  {
+    id: 'michael-thompson',
+    name: 'Michael Thompson',
+    rating: 5,
+    reviews: 124,
+    photoUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=160&q=80',
+  },
+  {
+    id: 'david-rodriguez',
+    name: 'David Rodriguez',
+    rating: 4.9,
+    reviews: 89,
+    photoUrl: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=160&q=80',
+  },
+  {
+    id: 'sarah-jenkins',
+    name: 'Sarah Jenkins',
+    rating: 4.9,
+    reviews: 156,
+    photoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
+  },
+  {
+    id: 'james-wilson',
+    name: 'James Wilson',
+    rating: 4.8,
+    reviews: 201,
+    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
+  },
+];
 
 export default function ResultsPage() {
   const navigate = useNavigate();
   const { runId } = useParams();
   const { results, isUnlocked, inputs } = useCalculatorStore();
-  const [expandedFactors, setExpandedFactors] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Popup state
   const [showPopup, setShowPopup] = useState(false);
   const [popupPosition, setPopupPosition] = useState<'bottom' | 'top'>('bottom');
   const [isDismissed, setIsDismissed] = useState(false);
+  const [showAgentModal, setShowAgentModal] = useState(false);
 
-  const actionsRef = useRef<HTMLDivElement>(null);
-
-  const handleFindAgent = () => {
-    if (actionsRef.current) {
-      actionsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
+  const plans = results?.plans?.slice(0, 7) ?? [];
+  const zipCode = results?.zipCode || inputs.zipCode || 'your area';
+  const validThrough = results?.validThrough || new Date().getFullYear();
 
   useEffect(() => {
     if (!isUnlocked || !results) {
       navigate(`/unlock/${runId}`);
       return;
     }
-    // Simulate loading
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, [isUnlocked, results, runId, navigate]);
 
-  // Scroll and timer listeners for the popup
+    const timer = window.setTimeout(() => setIsLoading(false), 450);
+    return () => window.clearTimeout(timer);
+  }, [isUnlocked, navigate, results, runId]);
+
   useEffect(() => {
     if (isLoading || isDismissed) return;
 
-    // 10 second timer to show popup
-    const timer = setTimeout(() => {
-      if (!isDismissed) {
-        setShowPopup(true);
-      }
+    const timer = window.setTimeout(() => {
+      setShowPopup(true);
     }, 10000);
 
     const handleScroll = () => {
-      if (isDismissed) return;
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      const percent = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
 
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-
-      // Show popup if scrolled past 10%
-      if (scrollPercent >= 10) {
-        setShowPopup(true);
-      }
-
-      // Switch position: if scrolled 80% or more, show at top; otherwise bottom
-      if (scrollPercent >= 80) {
-        setPopupPosition('top');
-      } else {
-        setPopupPosition('bottom');
-      }
+      if (percent >= 10) setShowPopup(true);
+      setPopupPosition(percent >= 60 ? 'top' : 'bottom');
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
     return () => {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [isLoading, isDismissed]);
+  }, [isDismissed, isLoading]);
 
   if (!results) return null;
+
+  const openAgents = () => {
+    setShowPopup(false);
+    setShowAgentModal(true);
+  };
+
+  const handleSelectAgent = async (agent: AgentProfile) => {
+    try {
+      await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          agent,
+          inputs,
+          runId,
+          resultsSource: results.source,
+          selectedAt: new Date().toISOString(),
+        }),
+      });
+    } catch {
+      // The thank-you page is still the right next step if lead storage is temporarily unavailable.
+    }
+
+    navigate(`/thank-you?agent=${encodeURIComponent(agent.name)}`);
+  };
 
   if (isLoading) {
     return (
@@ -110,197 +141,120 @@ export default function ResultsPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-      
-      <main className="flex-1 py-8 md:py-12">
+
+      <main className="flex-1 py-10 md:py-14">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto">
-            {/* Header */}
-            <div className="text-center mb-8 animate-fade-in">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-medium mb-4">
-                <Shield className="w-3.5 h-3.5" />
-                <span>Educational estimate • Not an official quote</span>
+          <div className="max-w-4xl mx-auto">
+            <button
+              onClick={openAgents}
+              className="w-full mb-10 rounded-3xl border border-primary/25 bg-primary/10 px-5 py-4 text-left shadow-sm transition hover:border-primary/40 hover:bg-primary/15"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/25">
+                  <Sparkles className="h-7 w-7" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-lg font-bold text-heading">Urgent: Lower rates may be available</p>
+                  <p className="text-body">Agents in {zipCode} have access to unlisted cheaper quotes.</p>
+                </div>
+                <ArrowRight className="h-6 w-6 text-primary" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-heading mb-2">
-                Your Results
-              </h1>
-              <p className="text-body">
-                Based on your answers, here's what we found.
+            </button>
+
+            <section className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-4 py-2 text-sm font-semibold text-accent mb-5">
+                <Shield className="h-4 w-4" />
+                <span>Marketplace Summary - Valid through {validThrough}</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-heading mb-4">Marketplace Estimates</h1>
+              <p className="text-lg text-body">
+                Standard public rates found for ZIP <span className="font-bold">{zipCode}</span>.
               </p>
-            </div>
-            
-            {/* Disclaimer */}
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50 border border-border mb-6 animate-slide-up">
-              <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-muted-foreground">
-                Not government-affiliated. Actual eligibility and costs vary. Consult a licensed agent for personalized advice.
-              </p>
-            </div>
-            
-            {/* Results Cards */}
-            <div className="space-y-5">
-              {/* Card A: Coverage Paths */}
-              <div className="surface-card p-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-primary" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-heading">Your likely coverage paths</h2>
-                </div>
-                
-                <div className="space-y-4">
-                  {results.coveragePaths.map((path, index) => (
-                    <div 
-                      key={path.name}
-                      className={cn(
-                        "p-4 rounded-xl border",
-                        path.match === 'top' 
-                          ? "bg-primary/5 border-primary/20" 
-                          : "bg-muted/30 border-border"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={cn(
-                              "text-sm font-semibold",
-                              path.match === 'top' ? "text-primary" : "text-foreground"
-                            )}>
-                              {path.name}
-                            </span>
-                            {path.match === 'top' && (
-                              <span className="px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                                Top Match
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">{path.reason}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Card B: Monthly Range */}
-              <div className="surface-card p-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-accent" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-heading">Estimated monthly range</h2>
-                </div>
-                
-                <div className="text-center py-6 bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 rounded-xl mb-4">
-                  <p className="text-4xl md:text-5xl font-bold text-heading">
-                    ${results.monthlyRange.min} – ${results.monthlyRange.max}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">per month</p>
-                </div>
-                
-                <button
-                  onClick={() => setExpandedFactors(!expandedFactors)}
-                  className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-                >
-                  {expandedFactors ? 'Hide' : 'What affects this?'}
-                  {expandedFactors ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-                
-                {expandedFactors && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <p className="text-sm text-muted-foreground mb-3">Your estimate is based on:</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {results.monthlyRange.factors.map((factor) => (
-                        <div key={factor} className="flex items-center gap-2 text-sm text-foreground">
-                          <CheckCircle2 className="w-4 h-4 text-accent" />
-                          {factor}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Card C: Plan Fit */}
-              <div className="surface-card p-6 animate-slide-up" style={{ animationDelay: '0.3s' }}>
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-primary" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-heading">Plan fit (PPO vs HMO)</h2>
-                </div>
-                
-                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mb-4">
-                  <p className="text-lg font-semibold text-primary mb-1">
-                    We recommend: {results.planFit.recommendation}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Based on your preferences and situation</p>
-                </div>
-                
-                <ul className="space-y-2">
-                  {results.planFit.reasons.map((reason, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-body">
-                      <CheckCircle2 className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                      {reason}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              {/* Card D: Next Steps */}
-              <div className="surface-card p-6 animate-slide-up" style={{ animationDelay: '0.4s' }}>
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <ListChecks className="w-5 h-5 text-accent" />
-                  </div>
-                  <h2 className="text-lg font-semibold text-heading">Next steps checklist</h2>
-                </div>
-                
-                <ul className="space-y-3">
-                  {results.nextSteps.map((step, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-xs font-semibold text-muted-foreground">
-                        {index + 1}
-                      </div>
-                      <span className="text-sm text-foreground pt-0.5">{step}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              {/* Card E: Actions */}
-              <div ref={actionsRef} className="surface-card p-6 animate-slide-up" style={{ animationDelay: '0.5s' }}>
-                <h2 className="text-lg font-semibold text-heading mb-5">Want more help?</h2>
-                
-                <div className="grid gap-3">
-                  <Button variant="default" size="lg" className="w-full justify-start">
-                    <Phone className="w-5 h-5" />
-                    Book a 10-minute call
-                    <ArrowRight className="w-4 h-4 ml-auto" />
-                  </Button>
-                  
-                  <Button variant="secondary" size="lg" className="w-full justify-start">
-                    <MessageSquare className="w-5 h-5" />
-                    Text me a summary
-                    <ArrowRight className="w-4 h-4 ml-auto" />
-                  </Button>
-                  
-                  <Button variant="secondary" size="lg" className="w-full justify-start">
-                    <Mail className="w-5 h-5" />
-                    Email my results
-                    <ArrowRight className="w-4 h-4 ml-auto" />
-                  </Button>
-                </div>
+            </section>
+
+            <div className="rounded-2xl border border-border bg-muted/30 p-5 mb-10">
+              <div className="flex items-start gap-2 text-sm md:text-base text-body">
+                <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
+                <p>
+                  <span className="font-bold">Disclaimer:</span> Estimates based on public marketplace data for ZIP {zipCode}.
+                  Final premiums may vary based on tobacco use, specific provider networks, and verified income subsidies.
+                </p>
               </div>
             </div>
-            
-            {/* Start Over */}
-            <div className="mt-8 text-center">
+
+            <section className="surface-card p-6 md:p-8 mb-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-12 w-12 rounded-2xl bg-accent/10 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-accent" />
+                </div>
+                <h2 className="text-2xl font-bold text-heading">Household details</h2>
+              </div>
+              <div className="grid md:grid-cols-2 gap-5">
+                <ResultFact label="ZIP code" value={String(zipCode)} />
+                <ResultFact label="Household" value={`${inputs.householdSize || 1} Member(s)`} />
+                <ResultFact label="Income" value={inputs.incomeRange || '$20,000 - $40,000'} />
+                <ResultFact label="Situation" value={formatSituation(inputs.situation)} />
+              </div>
+            </section>
+
+            <section className="surface-card p-6 md:p-8 mb-8">
+              <div className="flex items-center gap-4 mb-7">
+                <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold text-heading">Your likely coverage paths</h2>
+              </div>
+
+              <div className="space-y-5">
+                {plans.map((plan, index) => (
+                  <PlanCard key={plan.id || `${plan.name}-${index}`} plan={plan} isLowest={index === 0} />
+                ))}
+              </div>
+            </section>
+
+            <section className="surface-card p-6 md:p-8 mb-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold text-heading">Plan fit (PPO vs HMO)</h2>
+              </div>
+              <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-6">
+                <p className="text-xl font-bold text-primary">We recommend: {recommendedPlanName(results.planFit.recommendation, plans)}</p>
+                <p className="text-body mt-2">Based on your preferences and local coverage data</p>
+              </div>
+              <div className="space-y-3">
+                {results.planFit.reasons.map((reason) => (
+                  <div key={reason} className="flex items-center gap-3 text-body">
+                    <span className="h-5 w-5 rounded-full border-2 border-accent text-accent flex items-center justify-center text-xs">✓</span>
+                    <span>{reason}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-accent/30 bg-accent/10 p-6 md:p-8 mb-10 overflow-hidden relative">
+              <div className="max-w-xl">
+                <h2 className="text-2xl font-bold text-heading mb-3">Save up to 30% more with an Agent</h2>
+                <p className="text-lg text-body mb-6">
+                  Public search results don't include all private subsidies. Speak with a local pro to unlock the lowest possible rate.
+                </p>
+                <Button onClick={openAgents} size="lg" className="w-full sm:w-auto min-w-80 bg-accent hover:bg-accent/90 shadow-lg shadow-primary/20">
+                  <Users className="h-5 w-5" />
+                  Find Nearby Agent
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              </div>
+              <Users className="absolute right-8 top-8 h-28 w-28 text-muted-foreground/10" />
+            </section>
+
+            <div className="text-center">
               <button
                 onClick={() => {
                   useCalculatorStore.getState().reset();
                   navigate('/');
                 }}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-base text-muted-foreground hover:text-foreground transition-colors"
               >
                 Start over with new information
               </button>
@@ -308,111 +262,208 @@ export default function ResultsPage() {
           </div>
         </div>
       </main>
-      
+
       <Footer />
 
-      {/* ===== Agent Popup ===== */}
       {showPopup && !isDismissed && (
         <div
           className={cn(
-            "fixed left-0 right-0 z-50 flex justify-center px-4 transition-all duration-500",
-            popupPosition === 'bottom'
-              ? "bottom-6 animate-[slideInBottom_0.4s_ease-out]"
-              : "top-[68px] animate-[slideInTop_0.4s_ease-out]"
+            'fixed left-0 right-0 z-40 flex justify-center px-4 transition-all duration-500',
+            popupPosition === 'bottom' ? 'bottom-6 animate-[slideInBottom_0.35s_ease-out]' : 'top-[92px] animate-[slideInTop_0.35s_ease-out]'
           )}
-          style={{
-            animation: popupPosition === 'bottom'
-              ? 'slideInBottom 0.4s ease-out'
-              : 'slideInTop 0.4s ease-out'
-          }}
         >
-          <div
-            className="relative w-full max-w-sm rounded-2xl bg-white border border-emerald-100 overflow-hidden"
-            style={{
-              boxShadow: '0 20px 60px -12px rgba(0,0,0,0.18), 0 0 0 1px rgba(16,185,129,0.12)',
-            }}
-          >
-            {/* Green accent bar at top */}
-            <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-400" />
-
-            {/* Dismiss button */}
+          <div className="relative w-full max-w-md rounded-3xl border border-primary/20 bg-white p-5 shadow-2xl">
             <button
-              onClick={() => { setIsDismissed(true); setShowPopup(false); }}
-              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors z-10"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsDismissed(true);
+                setShowPopup(false);
+              }}
+              className="absolute right-3 top-3 h-8 w-8 rounded-full hover:bg-muted flex items-center justify-center"
               aria-label="Dismiss"
             >
-              <X className="w-3.5 h-3.5 text-gray-500" />
+              <X className="h-4 w-4 text-muted-foreground" />
             </button>
-
-            <div className="p-5">
-              {/* Header row */}
-              <div className="flex items-start gap-3 mb-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
-                >
-                  <ShieldAlert className="w-5 h-5 text-white" />
+            <button type="button" onClick={openAgents} className="w-full text-left">
+              <div className="flex items-start gap-4 pr-8">
+                <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                  <Sparkles className="h-6 w-6" />
                 </div>
-                <div className="flex-1 pr-6">
-                  <p className="text-sm font-bold text-gray-900 leading-snug">
-                    Save up to 30% more with a local agent
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Public results don't include private subsidies.
-                  </p>
+                <div>
+                  <p className="text-xl font-bold text-heading">Save up to 30% more with an Agent</p>
+                  <p className="text-body mt-1">Public search results don't include all private subsidies.</p>
                 </div>
               </div>
-
-              {/* Agent avatars (trust signals) */}
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex -space-x-2">
-                  {['#6366f1','#ec4899','#f59e0b'].map((color, i) => (
-                    <div
-                      key={i}
-                      className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
-                      style={{ background: color }}
-                    >
-                      {['JM','SR','KL'][i]}
-                    </div>
-                  ))}
-                </div>
-                <span className="text-xs text-gray-500">Licensed agents near you</span>
+              <div className="mt-5 rounded-2xl bg-primary px-5 py-4 text-center font-bold text-primary-foreground flex items-center justify-center gap-3">
+                Find Nearby Agent
+                <ArrowRight className="h-5 w-5" />
               </div>
-
-              {/* Green CTA button with pulse */}
-              <button
-                onClick={() => {
-                  setIsDismissed(true);
-                  setShowPopup(false);
-                  handleFindAgent();
-                }}
-                className="animate-pulse-subtle w-full py-3 px-4 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-95"
-                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
-              >
-                Find a Nearby Agent
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              {/* Fine print */}
-              <p className="text-center text-xs text-gray-400 mt-2">
-                Free • No commitment required
-              </p>
-            </div>
+            </button>
           </div>
         </div>
       )}
 
-      {/* Popup keyframes injected inline */}
+      {showAgentModal && (
+        <AgentModal
+          zipCode={String(zipCode)}
+          onClose={() => setShowAgentModal(false)}
+          onSelect={handleSelectAgent}
+        />
+      )}
+
       <style>{`
         @keyframes slideInBottom {
           from { opacity: 0; transform: translateY(100%); }
-          to   { opacity: 1; transform: translateY(0); }
+          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes slideInTop {
           from { opacity: 0; transform: translateY(-100%); }
-          to   { opacity: 1; transform: translateY(0); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
   );
+}
+
+function ResultFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background/70 p-5">
+      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">{label}</p>
+      <p className="text-2xl font-bold text-heading">{value}</p>
+    </div>
+  );
+}
+
+function PlanCard({ plan, isLowest }: { plan: MarketplacePlan; isLowest: boolean }) {
+  return (
+    <article className={cn('rounded-3xl border p-5 md:p-6', isLowest ? 'border-primary/30 bg-primary/5' : 'border-border bg-background/70')}>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <Badge tone="issuer">{plan.issuer}</Badge>
+        <Badge tone={plan.metalLevel}>{plan.metalLevel}</Badge>
+        {isLowest && <Badge tone="lowest">Lowest price</Badge>}
+      </div>
+      <h3 className="text-2xl font-bold text-heading mb-5">{plan.name}</h3>
+      <div className="grid grid-cols-3 gap-4">
+        <PlanMetric label="Monthly" value={`$${formatMoney(plan.premium)}`} highlight />
+        <PlanMetric label="Deductible" value={`$${formatMoney(plan.deductible)}`} />
+        <PlanMetric label="Type" value={plan.type || 'Plan'} />
+      </div>
+    </article>
+  );
+}
+
+function PlanMetric({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="border-r border-border last:border-r-0 pr-4 last:pr-0">
+      <p className="text-xs md:text-sm font-bold uppercase text-muted-foreground mb-2">{label}</p>
+      <p className={cn('text-xl md:text-2xl font-bold text-heading', highlight && 'text-4xl md:text-5xl text-primary')}>{value}</p>
+    </div>
+  );
+}
+
+function Badge({ tone, children }: { tone: string; children: string }) {
+  const normalized = tone.toLowerCase();
+  const styles =
+    normalized.includes('bronze') ? 'bg-amber-700 text-white' :
+    normalized.includes('silver') ? 'bg-slate-400 text-white' :
+    normalized.includes('gold') ? 'bg-yellow-500 text-white' :
+    normalized.includes('platinum') ? 'bg-slate-700 text-white' :
+    normalized === 'lowest' ? 'bg-primary text-primary-foreground' :
+    'bg-muted text-muted-foreground';
+
+  return <span className={cn('rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wide', styles)}>{children}</span>;
+}
+
+function AgentModal({
+  zipCode,
+  onClose,
+  onSelect,
+}: {
+  zipCode: string;
+  onClose: () => void;
+  onSelect: (agent: AgentProfile) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm">
+      <div className="max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-[2rem] border border-border bg-background shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-border bg-primary/5 px-6 py-6 md:px-8">
+          <div>
+            <h2 className="text-3xl font-bold text-heading">Nearby Certified Agents</h2>
+            <div className="mt-2 flex items-center gap-2 text-xl text-body">
+              <MapPin className="h-5 w-5" />
+              <span>Results for ZIP {zipCode}</span>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-10 w-10 rounded-full hover:bg-muted flex items-center justify-center" aria-label="Close">
+            <X className="h-7 w-7" />
+          </button>
+        </div>
+
+        <div className="max-h-[58vh] overflow-y-auto px-6 py-6 md:px-8">
+          <div className="mb-6 rounded-3xl border border-accent/30 bg-accent/10 px-6 py-5 text-accent font-bold uppercase tracking-wide flex items-center gap-3">
+            <Shield className="h-6 w-6" />
+            Exclusive unpublished rates available
+          </div>
+
+          <div className="space-y-5">
+            {agents.map((agent) => (
+              <article key={agent.id} className="rounded-3xl border border-border bg-background p-5">
+                <div className="flex items-center gap-5">
+                  <div className="relative">
+                    <img src={agent.photoUrl} alt="" className="h-24 w-24 rounded-3xl object-cover ring-4 ring-muted" />
+                    <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-background bg-green-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-heading">{agent.name}</h3>
+                    <div className="mt-1 flex items-center gap-3 text-lg text-body">
+                      <span className="flex items-center gap-1 font-bold text-heading">
+                        <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
+                        {agent.rating}
+                      </span>
+                      <span>{agent.reviews} reviews</span>
+                    </div>
+                  </div>
+                  <Button onClick={() => onSelect(agent)} size="lg" className="min-w-32 shadow-lg shadow-primary/20">
+                    Select
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-border bg-muted/30 px-6 py-5 text-center text-sm italic text-body md:px-8">
+          By selecting an agent, you consent to receive a one-time consultation call regarding exclusive plan options.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatMoney(value: number) {
+  return Number(value || 0).toLocaleString('en-US');
+}
+
+function formatSituation(value?: string) {
+  const labels: Record<string, string> = {
+    'lost-job': 'Lost job',
+    'turning-26': 'Turning 26',
+    moved: 'Moved',
+    'life-event': 'Marriage / baby',
+    'self-employed': 'Self-employed',
+    exploring: 'Exploring',
+  };
+
+  return labels[value || ''] || 'Moved';
+}
+
+function recommendedPlanName(recommendation: string, plans: MarketplacePlan[]) {
+  const preferredType = recommendation?.toUpperCase();
+  const matchingPlan = plans.find((plan) => plan.type?.toUpperCase().includes(preferredType));
+  const fallbackPlan = plans.find((plan) => plan.metalLevel.toLowerCase().includes('silver')) || plans[0];
+  const type = matchingPlan?.type || fallbackPlan?.type || recommendation || 'PPO';
+  const metal = matchingPlan?.metalLevel || fallbackPlan?.metalLevel || 'Silver';
+
+  return `${metal} ${type}`.trim();
 }

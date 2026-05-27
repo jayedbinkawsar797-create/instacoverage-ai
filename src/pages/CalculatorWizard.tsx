@@ -7,15 +7,6 @@ import { ProgressStepper } from '@/components/ProgressStepper';
 import { ArrowLeft, ArrowRight, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ageRanges = [
-  'Under 26',
-  '26-35',
-  '36-45',
-  '46-55',
-  '56-64',
-  '65+',
-];
-
 const incomeRanges = [
   'Under $20,000',
   '$20,000 - $40,000',
@@ -61,8 +52,8 @@ export default function CalculatorWizard() {
         if (!inputs.zipCode || inputs.zipCode.length !== 5) {
           newErrors.zipCode = 'Please enter a valid 5-digit ZIP code';
         }
-        if (!inputs.ageRange) {
-          newErrors.ageRange = 'Please select your age range';
+        if (!inputs.birthYear || Number(inputs.birthYear) < 1900 || Number(inputs.birthYear) > new Date().getFullYear()) {
+          newErrors.birthYear = 'Please enter a valid birth year';
         }
         if (inputs.currentlyInsured === null) {
           newErrors.currentlyInsured = 'Please select an option';
@@ -134,6 +125,16 @@ export default function CalculatorWizard() {
     if (errors.zipCode) setErrors({ ...errors, zipCode: '' });
   };
 
+  const handleBirthYearChange = (value: string) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 4);
+    updateInputs({ birthYear: cleaned });
+    if (errors.birthYear) setErrors({ ...errors, birthYear: '' });
+  };
+
+  const calculatedAge = inputs.birthYear?.length === 4
+    ? Math.max(0, new Date().getFullYear() - Number(inputs.birthYear))
+    : null;
+
   useEffect(() => {
     // Reset to step 1 on mount
     setStep(1);
@@ -199,33 +200,27 @@ export default function CalculatorWizard() {
                       )}
                     </div>
                     
-                    {/* Age Range */}
+                    {/* Birth Year */}
                     <div>
                       <label className="block text-sm font-medium text-heading mb-2">
-                        Your Age Range
+                        Enter Birth Year
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {ageRanges.map((range) => (
-                          <button
-                            key={range}
-                            type="button"
-                            onClick={() => {
-                              updateInputs({ ageRange: range });
-                              if (errors.ageRange) setErrors({ ...errors, ageRange: '' });
-                            }}
-                            className={cn(
-                              "px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200",
-                              inputs.ageRange === range
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-card border-border hover:border-primary/50 text-foreground"
-                            )}
-                          >
-                            {range}
-                          </button>
-                        ))}
-                      </div>
-                      {errors.ageRange && (
-                        <p className="text-sm text-destructive mt-1.5">{errors.ageRange}</p>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={inputs.birthYear || ''}
+                        onChange={(event) => handleBirthYearChange(event.target.value)}
+                        placeholder="1999"
+                        className={cn(
+                          "input-field",
+                          errors.birthYear && "border-destructive ring-destructive/20"
+                        )}
+                      />
+                      {calculatedAge !== null && (
+                        <p className="text-sm text-muted-foreground mt-2">Calculated Age: {calculatedAge}</p>
+                      )}
+                      {errors.birthYear && (
+                        <p className="text-sm text-destructive mt-1.5">{errors.birthYear}</p>
                       )}
                     </div>
                     

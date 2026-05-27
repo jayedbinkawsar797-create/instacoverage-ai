@@ -2,7 +2,7 @@ export interface CalculatorInputs {
   // Step 1: Location & Basics
   zipCode: string;
   state: string;
-  ageRange: string;
+  birthYear: string;
   currentlyInsured: boolean | null;
   
   // Step 2: Household
@@ -51,6 +51,11 @@ export interface Consent {
 }
 
 export interface ResultsData {
+  source?: 'cms-marketplace' | 'fallback';
+  zipCode?: string;
+  countyName?: string;
+  validThrough?: number;
+  plans?: MarketplacePlan[];
   coveragePaths: {
     name: string;
     match: 'top' | 'alternative';
@@ -65,5 +70,23 @@ export interface ResultsData {
     recommendation: 'PPO' | 'HMO' | 'Either';
     reasons: string[];
   };
-  nextSteps: string[];
+  nextSteps?: string[];
+}
+
+export interface MarketplacePlan {
+  id: string;
+  name: string;
+  issuer: string;
+  metalLevel: string;
+  type: string;
+  premium: number;
+  deductible: number;
+}
+
+export interface AgentProfile {
+  id: string;
+  name: string;
+  rating: number;
+  reviews: number;
+  photoUrl: string;
 }

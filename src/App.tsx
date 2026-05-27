@@ -7,6 +7,7 @@ import LandingPage from "./pages/LandingPage";
 import CalculatorWizard from "./pages/CalculatorWizard";
 import UnlockPage from "./pages/UnlockPage";
 import ResultsPage from "./pages/ResultsPage";
+import ThankYouPage from "./pages/ThankYouPage";
 import TrustCenterPage from "./pages/TrustCenterPage";
 import { PrivacyPage, TermsPage, ConsentPage, DisclaimerPage, ContactPage } from "./pages/LegalPages";
 import NotFound from "./pages/NotFound";
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/calculator" element={<CalculatorWizard />} />
           <Route path="/unlock/:runId" element={<UnlockPage />} />
           <Route path="/results/:runId" element={<ResultsPage />} />
+          <Route path="/thank-you" element={<ThankYouPage />} />
           <Route path="/trust" element={<TrustCenterPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />

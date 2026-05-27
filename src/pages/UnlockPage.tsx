@@ -11,16 +11,15 @@ import {
   BarChart3, 
   DollarSign, 
   Sparkles, 
-  ListChecks,
   Heart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getMarketplaceResults } from '@/lib/cmsMarketplaceApi';
 
 const previewItems = [
   { icon: BarChart3, label: 'Coverage paths for your area' },
   { icon: DollarSign, label: 'Estimated monthly range' },
   { icon: Sparkles, label: 'PPO vs HMO fit' },
-  { icon: ListChecks, label: 'Next steps checklist' },
 ];
 
 const CONSENT_VERSION = '1.0';
@@ -28,7 +27,7 @@ const CONSENT_VERSION = '1.0';
 export default function UnlockPage() {
   const navigate = useNavigate();
   const { runId } = useParams();
-  const { unlock, setResults } = useCalculatorStore();
+  const { unlock, setResults, inputs } = useCalculatorStore();
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -81,38 +80,9 @@ export default function UnlockPage() {
     
     setIsSubmitting(true);
     
-    // Simulate API call and consent storage
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // Mock results data
-    const mockResults = {
-      coveragePaths: [
-        { name: 'Marketplace Plan (ACA)', match: 'top' as const, reason: 'Based on your income and situation, you may qualify for subsidies' },
-        { name: 'COBRA Continuation', match: 'alternative' as const, reason: 'Temporary option if leaving employer coverage' },
-        { name: 'Short-term Health Insurance', match: 'alternative' as const, reason: 'Bridge coverage while exploring options' },
-      ],
-      monthlyRange: {
-        min: 180,
-        max: 450,
-        factors: ['Age', 'Location', 'Household size', 'Income level'],
-      },
-      planFit: {
-        recommendation: 'PPO' as const,
-        reasons: [
-          'More flexibility in choosing doctors',
-          'No referrals needed for specialists',
-          'Better for your situation if you travel',
-        ],
-      },
-      nextSteps: [
-        'Review your coverage path options',
-        'Gather income documentation',
-        'Compare plan details during open enrollment',
-        'Consider speaking with a licensed agent',
-      ],
-    };
-    
-    setResults(mockResults);
+    const results = await getMarketplaceResults(inputs);
+
+    setResults(results);
     unlock();
     navigate(`/results/${runId}`);
   };
