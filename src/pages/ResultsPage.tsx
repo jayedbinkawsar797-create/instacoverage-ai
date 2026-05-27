@@ -233,13 +233,13 @@ export default function ResultsPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-accent/30 bg-accent/10 p-6 md:p-8 mb-10 overflow-hidden relative">
+            <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 md:p-8 mb-10 overflow-hidden relative">
               <div className="max-w-xl">
                 <h2 className="text-2xl font-bold text-heading mb-3">Save up to 30% more with an Agent</h2>
                 <p className="text-lg text-body mb-6">
                   Public search results don't include all private subsidies. Speak with a local pro to unlock the lowest possible rate.
                 </p>
-                <Button onClick={openAgents} size="lg" className="w-full sm:w-auto min-w-80 bg-accent hover:bg-accent/90 shadow-lg shadow-primary/20">
+                <Button onClick={openAgents} size="lg" className="w-full sm:w-auto min-w-80 bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-200">
                   <Users className="h-5 w-5" />
                   Find Nearby Agent
                   <ArrowRight className="h-5 w-5" />
@@ -287,7 +287,7 @@ export default function ResultsPage() {
             </button>
             <button type="button" onClick={openAgents} className="w-full text-left">
               <div className="flex items-start gap-4 pr-8">
-                <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                <div className="h-12 w-12 rounded-full bg-emerald-500 text-white flex items-center justify-center">
                   <Sparkles className="h-6 w-6" />
                 </div>
                 <div>
@@ -295,7 +295,7 @@ export default function ResultsPage() {
                   <p className="text-body mt-1">Public search results don't include all private subsidies.</p>
                 </div>
               </div>
-              <div className="mt-5 rounded-2xl bg-primary px-5 py-4 text-center font-bold text-primary-foreground flex items-center justify-center gap-3">
+              <div className="mt-5 rounded-2xl bg-emerald-500 px-5 py-4 text-center font-bold text-white flex items-center justify-center gap-3 hover:bg-emerald-600 transition-colors">
                 Find Nearby Agent
                 <ArrowRight className="h-5 w-5" />
               </div>
