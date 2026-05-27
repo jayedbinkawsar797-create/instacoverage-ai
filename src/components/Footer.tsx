@@ -12,7 +12,7 @@ export function Footer() {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <Calculator className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="text-sm font-bold text-foreground">No. 1 Health Coverage</span>
+              <span className="text-sm font-bold text-foreground">InstaCoverage AI</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               Get your estimated coverage options in 60–90 seconds.
@@ -58,7 +58,7 @@ export function Footer() {
             <Link to="/disclaimer" className="text-primary hover:underline ml-1">See full disclaimer.</Link>
           </p>
           <p className="text-xs text-muted-foreground text-center mt-4">
-            © {new Date().getFullYear()} No. 1 Health Coverage AI Calculator. All rights reserved.
+            © {new Date().getFullYear()} InstaCoverage AI. All rights reserved.
           </p>
         </div>
       </div>
