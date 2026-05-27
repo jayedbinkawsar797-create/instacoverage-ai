@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { initSchema, query as dbQuery } from './src/lib/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,23 +139,82 @@ app.post('/api/marketplace/results', async (req, res) => {
 });
 
 app.post('/api/leads', async (req, res) => {
-  const lead = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...req.body };
-  const file = path.join(__dirname, 'leads.json');
-  let leads = [];
-  try {
-    leads = JSON.parse(await fs.readFile(file, 'utf8'));
-  } catch {
-    leads = [];
+  const body = req.body || {};
+  const lead = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...body };
+
+  // Persist to PostgreSQL when available
+  const dbResult = await dbQuery(
+    `INSERT INTO leads
+       (id, run_id, full_name, phone, email, sms_consent, call_consent,
+        zip_code, state, income_range, household_size, situation, plan_preference, urgency)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     ON CONFLICT (id) DO NOTHING`,
+    [
+      lead.id,
+      body.runId ?? null,
+      body.fullName ?? body.name ?? null,
+      body.phone ?? null,
+      body.email ?? null,
+      body.smsConsent ?? false,
+      body.callConsent ?? false,
+      body.zipCode ?? null,
+      body.state ?? null,
+      body.incomeRange ?? null,
+      body.householdSize ? Number(body.householdSize) : null,
+      body.situation ?? null,
+      body.planPreference ?? null,
+      body.urgency ?? null,
+    ]
+  );
+
+  // Fall back to JSON file store when no database is configured
+  if (!dbResult) {
+    const file = path.join(__dirname, 'leads.json');
+    let leads = [];
+    try {
+      leads = JSON.parse(await fs.readFile(file, 'utf8'));
+    } catch {
+      leads = [];
+    }
+    leads.unshift(lead);
+    await fs.writeFile(file, JSON.stringify(leads.slice(0, 500), null, 2));
   }
-  leads.unshift(lead);
-  await fs.writeFile(file, JSON.stringify(leads.slice(0, 500), null, 2));
+
   res.status(201).json({ ok: true, lead });
+});
+
+// Generic user-input submission endpoint
+app.post('/api/submit', async (req, res) => {
+  const body = req.body || {};
+  const content = body.content ?? body.data ?? JSON.stringify(body);
+
+  if (!content || String(content).trim().length === 0) {
+    return res.status(400).json({ ok: false, error: 'content is required' });
+  }
+
+  const id = crypto.randomUUID();
+  const submission = { id, content: String(content).trim(), source: body.source ?? 'web', createdAt: new Date().toISOString() };
+
+  const dbResult = await dbQuery(
+    `INSERT INTO submissions (id, content, source) VALUES ($1, $2, $3)`,
+    [submission.id, submission.content, submission.source]
+  );
+
+  if (!dbResult) {
+    // No database — acknowledge without persisting (or extend JSON fallback here if needed)
+    console.warn('Submission received but DATABASE_URL is not set; data not persisted.');
+  }
+
+  res.status(201).json({ ok: true, submission });
 });
 
 app.use(express.static(path.join(__dirname, 'dist')));
 app.get(/.*/, (_req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
+
+// Initialise DB schema then start listening
+initSchema().catch((err) => console.error('Schema init error:', err.message));
 
 app.listen(port, () => {
   console.log(`Health coverage calculator running on port ${port}`);
