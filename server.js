@@ -21,8 +21,10 @@ const NOTIFICATION_FROM = 'InstaCoverage Leads <noreply@instacoveragequote.com>'
 const resend = new Resend(RESEND_API_KEY);
 
 async function sendLeadNotification(lead, body) {
+  const agentName = body.agentName || body.agent?.name || 'None selected (unlocked results page)';
   try {
-    await resend.emails.send({
+    console.log(`[Resend] Attempting to send lead email for "${body.fullName || body.name || 'Unknown'}" from noreply@instacoveragequote.com to ${NOTIFICATION_TO}...`);
+    const data = await resend.emails.send({
       from: NOTIFICATION_FROM,
       to: [NOTIFICATION_TO],
       subject: `🔔 New Lead: ${body.fullName || body.name || 'Unknown'} — InstaCoverage`,
@@ -35,6 +37,7 @@ async function sendLeadNotification(lead, body) {
             <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Name</td><td style="padding:8px 0;color:#111827;">${body.fullName || body.name || '—'}</td></tr>
             <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Phone</td><td style="padding:8px 0;color:#111827;">${body.phone || '—'}</td></tr>
             <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Email</td><td style="padding:8px 0;color:#111827;">${body.email || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Assigned Agent</td><td style="padding:8px 0;color:#2563eb;font-weight:600;">${agentName}</td></tr>
             <tr><td style="padding:8px 0;color:#374151;font-weight:600;">ZIP Code</td><td style="padding:8px 0;color:#111827;">${body.zipCode || '—'}</td></tr>
             <tr><td style="padding:8px 0;color:#374151;font-weight:600;">State</td><td style="padding:8px 0;color:#111827;">${body.state || '—'}</td></tr>
             <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Income Range</td><td style="padding:8px 0;color:#111827;">${body.incomeRange || '—'}</td></tr>
@@ -52,8 +55,9 @@ async function sendLeadNotification(lead, body) {
         </div>
       `,
     });
+    console.log('[Resend] Email sent successfully. Response:', JSON.stringify(data));
   } catch (err) {
-    console.error('Lead notification email failed:', err.message);
+    console.error('[Resend] Lead notification email failed:', err.message);
   }
 }
 
@@ -192,8 +196,8 @@ app.post('/api/leads', async (req, res) => {
   const dbResult = await dbQuery(
     `INSERT INTO leads
        (id, run_id, full_name, phone, email, sms_consent, call_consent,
-        zip_code, state, income_range, household_size, situation, plan_preference, urgency)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        zip_code, state, income_range, household_size, situation, plan_preference, urgency, agent_name)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      ON CONFLICT (id) DO NOTHING`,
     [
       lead.id,
@@ -210,6 +214,7 @@ app.post('/api/leads', async (req, res) => {
       body.situation ?? null,
       body.planPreference ?? null,
       body.urgency ?? null,
+      body.agentName ?? body.agent?.name ?? null,
     ]
   );
 

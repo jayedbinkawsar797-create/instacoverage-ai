@@ -15,6 +15,13 @@ export interface CalculatorInputs {
   // Step 4: Preferences
   planPreference: string;
   urgency: string;
+
+  // Contact Info (optional)
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  smsConsent?: boolean;
+  callConsent?: boolean;
 }
 
 export interface CalculatorRun {

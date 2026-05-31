@@ -112,10 +112,23 @@ export default function ResultsPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           agent,
-          inputs,
           runId,
           resultsSource: results.source,
           selectedAt: new Date().toISOString(),
+          // Merge contact info from store
+          fullName: inputs.fullName,
+          phone: inputs.phone,
+          email: inputs.email,
+          smsConsent: inputs.smsConsent,
+          callConsent: inputs.callConsent,
+          // Merge calculator inputs
+          zipCode: inputs.zipCode,
+          state: inputs.state,
+          incomeRange: inputs.incomeRange,
+          householdSize: inputs.householdSize,
+          situation: inputs.situation,
+          planPreference: inputs.planPreference,
+          urgency: inputs.urgency,
         }),
       });
     } catch {

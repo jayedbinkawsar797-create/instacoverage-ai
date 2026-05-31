@@ -27,7 +27,7 @@ const CONSENT_VERSION = '1.0';
 export default function UnlockPage() {
   const navigate = useNavigate();
   const { runId } = useParams();
-  const { unlock, setResults, inputs } = useCalculatorStore();
+  const { unlock, setResults, inputs, updateInputs } = useCalculatorStore();
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -83,6 +83,41 @@ export default function UnlockPage() {
     const results = await getMarketplaceResults(inputs);
 
     setResults(results);
+    
+    // Save contact fields to Zustand store
+    updateInputs({
+      fullName: formData.fullName,
+      phone: formData.phone,
+      email: formData.email,
+      smsConsent: formData.smsConsent,
+      callConsent: formData.callConsent,
+    });
+
+    // Capture the lead immediately when they unlock
+    try {
+      await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          runId,
+          fullName: formData.fullName,
+          phone: formData.phone,
+          email: formData.email,
+          smsConsent: formData.smsConsent,
+          callConsent: formData.callConsent,
+          zipCode: inputs.zipCode,
+          state: inputs.state,
+          incomeRange: inputs.incomeRange,
+          householdSize: inputs.householdSize,
+          situation: inputs.situation,
+          planPreference: inputs.planPreference,
+          urgency: inputs.urgency,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to capture lead on unlock:', err);
+    }
+
     unlock();
     navigate(`/results/${runId}`);
   };

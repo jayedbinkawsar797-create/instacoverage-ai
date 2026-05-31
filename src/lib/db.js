@@ -67,8 +67,14 @@ export async function initSchema() {
       situation    TEXT,
       plan_preference TEXT,
       urgency      TEXT,
+      agent_name   TEXT,
       created_at   TIMESTAMPTZ DEFAULT NOW()
     );
+  `);
+
+  // Migration for existing tables
+  await p.query(`
+    ALTER TABLE leads ADD COLUMN IF NOT EXISTS agent_name TEXT;
   `);
 
   await p.query(`
