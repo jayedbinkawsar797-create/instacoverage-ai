@@ -17,6 +17,7 @@ import { Header } from '@/components/Header';
 import { useCalculatorStore } from '@/stores/calculatorStore';
 import { cn } from '@/lib/utils';
 import type { AgentProfile, MarketplacePlan } from '@/types/calculator';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const agents: AgentProfile[] = [
   {
@@ -332,9 +333,17 @@ function PlanCard({ plan, isLowest, isCmsSource }: { plan: MarketplacePlan; isLo
         <Badge tone={plan.metalLevel}>{plan.metalLevel}</Badge>
         {isLowest && <Badge tone="lowest">Lowest price</Badge>}
         {hasTaxCredit && taxCredit > 0 && (
-          <span className="rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wide bg-green-100 text-green-700 border border-green-200">
-            Tax Credit Applied
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center gap-1 cursor-pointer rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wide bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 transition-colors">
+                Tax Credit Applied
+                <Info className="w-3.5 h-3.5 text-green-700/80" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[280px] p-3 text-xs leading-normal bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+              It’s a credit provided by the government to lower your monthly premium cost for Health Insurance and is required to be paid back when you file your taxes if your actual income differs from your estimate.
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
       <h3 className="text-2xl font-bold text-heading mb-5">{plan.name}</h3>
@@ -347,7 +356,19 @@ function PlanCard({ plan, isLowest, isCmsSource }: { plan: MarketplacePlan; isLo
                 ${formatMoney(netPremium)}
               </p>
               <p className="text-xs text-muted-foreground mt-1 line-through">${formatMoney(plan.premium)}/mo</p>
-              <p className="text-xs text-green-600 font-semibold mt-0.5">${formatMoney(taxCredit)}/mo tax credit</p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="text-xs text-green-600 font-semibold">${formatMoney(taxCredit)}/mo tax credit</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="inline-flex items-center text-green-600/80 hover:text-green-800 transition-colors" aria-label="Tax credit disclaimer">
+                      <Info className="w-3.5 h-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[280px] p-3 text-xs leading-normal bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                    It’s a credit provided by the government to lower your monthly premium cost for Health Insurance and is required to be paid back when you file your taxes if your actual income differs from your estimate.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </>
           ) : (
             <p className="text-4xl md:text-5xl font-bold text-primary">${formatMoney(plan.premium)}</p>
@@ -358,7 +379,22 @@ function PlanCard({ plan, isLowest, isCmsSource }: { plan: MarketplacePlan; isLo
       </div>
       {hasTaxCredit && taxCredit > 0 && (
         <div className="rounded-xl bg-green-50 border border-green-100 px-4 py-2.5 text-sm text-green-700">
-          <span className="font-semibold">Estimated savings overview:</span> Based on your income, you may qualify for a <span className="font-bold">${formatMoney(taxCredit)}/mo premium tax credit</span> — lowering your cost from <span className="line-through">${formatMoney(plan.premium)}</span> to <span className="font-bold">${formatMoney(netPremium)}/mo</span>.
+          <span className="font-semibold">Estimated savings overview:</span> Based on your income, you may qualify for a{' '}
+          <span className="font-bold inline-flex items-center gap-1">
+            ${formatMoney(taxCredit)}/mo premium tax credit
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="inline-flex items-center text-green-700/80 hover:text-green-950 transition-colors" aria-label="Tax credit disclaimer">
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[280px] p-3 text-xs leading-normal bg-popover text-popover-foreground border border-border shadow-lg rounded-xl font-normal">
+                It’s a credit provided by the government to lower your monthly premium cost for Health Insurance and is required to be paid back when you file your taxes if your actual income differs from your estimate.
+              </TooltipContent>
+            </Tooltip>
+          </span>{' '}
+          — lowering your cost from <span className="line-through">${formatMoney(plan.premium)}</span> to{' '}
+          <span className="font-bold">${formatMoney(netPremium)}/mo</span>.
         </div>
       )}
     </article>

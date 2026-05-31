@@ -17,7 +17,7 @@ const apiBase = 'https://marketplace.api.healthcare.gov/api/v1';
 const cmsApiKey = process.env.MARKETPLACE_API_KEY || process.env.VITE_MARKETPLACE_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_dLNWzWsB_JrJ56aJB5JocXgvQmXnCDujG';
 const NOTIFICATION_TO = 'Ramsayjeanjacques@rjhealthsolutions.com';
-const NOTIFICATION_FROM = 'InstaCoverage Leads <onboarding@resend.dev>';
+const NOTIFICATION_FROM = 'InstaCoverage Leads <noreply@instacoveragequote.com>';
 const resend = new Resend(RESEND_API_KEY);
 
 async function sendLeadNotification(lead, body) {
@@ -71,10 +71,10 @@ function parseAgeFromBirthYear(birthYear) {
 
 function parseIncome(incomeRange, householdSize = 1) {
   if (!incomeRange || incomeRange === 'Prefer not to say') return 42000 + (householdSize - 1) * 9000;
-  if (incomeRange.startsWith('Under')) return 18000;
+  if (incomeRange.startsWith('Under')) return 20000;
   if (incomeRange.endsWith('+')) return 110000;
   const numbers = incomeRange.match(/\d[\d,]*/g)?.map((value) => Number(value.replace(/,/g, ''))) ?? [];
-  if (numbers.length >= 2) return Math.round((numbers[0] + numbers[1]) / 2);
+  if (numbers.length >= 2) return Math.max(numbers[0], numbers[1]);
   return numbers[0] || 42000;
 }
 
