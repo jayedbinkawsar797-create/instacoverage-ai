@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Resend } from 'resend';
 import { initSchema, query as dbQuery } from './src/lib/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,6 +15,47 @@ const app = express();
 const port = process.env.PORT || 3000;
 const apiBase = 'https://marketplace.api.healthcare.gov/api/v1';
 const cmsApiKey = process.env.MARKETPLACE_API_KEY || process.env.VITE_MARKETPLACE_API_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_dLNWzWsB_JrJ56aJB5JocXgvQmXnCDujG';
+const NOTIFICATION_TO = 'Ramsayjeanjacques@rjhealthsolutions.com';
+const NOTIFICATION_FROM = 'InstaCoverage Leads <onboarding@resend.dev>';
+const resend = new Resend(RESEND_API_KEY);
+
+async function sendLeadNotification(lead, body) {
+  try {
+    await resend.emails.send({
+      from: NOTIFICATION_FROM,
+      to: [NOTIFICATION_TO],
+      subject: `🔔 New Lead: ${body.fullName || body.name || 'Unknown'} — InstaCoverage`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+          <h2 style="color:#16a34a;margin-bottom:4px;">New Lead Received</h2>
+          <p style="color:#6b7280;margin-top:0;">InstaCoverage AI Calculator</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Name</td><td style="padding:8px 0;color:#111827;">${body.fullName || body.name || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Phone</td><td style="padding:8px 0;color:#111827;">${body.phone || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Email</td><td style="padding:8px 0;color:#111827;">${body.email || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">ZIP Code</td><td style="padding:8px 0;color:#111827;">${body.zipCode || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">State</td><td style="padding:8px 0;color:#111827;">${body.state || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Income Range</td><td style="padding:8px 0;color:#111827;">${body.incomeRange || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Household Size</td><td style="padding:8px 0;color:#111827;">${body.householdSize || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Situation</td><td style="padding:8px 0;color:#111827;">${body.situation || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Plan Preference</td><td style="padding:8px 0;color:#111827;">${body.planPreference || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Urgency</td><td style="padding:8px 0;color:#111827;">${body.urgency || '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">SMS Consent</td><td style="padding:8px 0;color:#111827;">${body.smsConsent ? 'Yes' : 'No'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Call Consent</td><td style="padding:8px 0;color:#111827;">${body.callConsent ? 'Yes' : 'No'}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Lead ID</td><td style="padding:8px 0;color:#6b7280;font-size:12px;">${lead.id}</td></tr>
+            <tr><td style="padding:8px 0;color:#374151;font-weight:600;">Received At</td><td style="padding:8px 0;color:#6b7280;">${new Date(lead.createdAt).toLocaleString('en-US', { timeZone: 'America/New_York' })} ET</td></tr>
+          </table>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;">
+          <p style="color:#9ca3af;font-size:12px;">Sent by InstaCoverage AI &mdash; Do not reply to this email.</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('Lead notification email failed:', err.message);
+  }
+}
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
@@ -64,6 +106,7 @@ function normalizePlan(plan, index) {
     plan.medical_deductible ??
     0
   );
+  const rawPremiumWithCredit = plan.premium_w_credit !== undefined ? Number(plan.premium_w_credit) : undefined;
   return {
     id: plan.id || plan.plan_id || `plan-${index}`,
     name: plan.name || plan.marketing_name || 'Marketplace Plan',
@@ -72,6 +115,9 @@ function normalizePlan(plan, index) {
     type: plan.type || plan.plan_type || 'Plan',
     premium: Number.isFinite(premium) ? Math.round(premium) : 0,
     deductible: Number.isFinite(deductible) ? Math.round(deductible) : 0,
+    ...(rawPremiumWithCredit !== undefined && Number.isFinite(rawPremiumWithCredit)
+      ? { premiumWithCredit: Math.max(0, Math.round(rawPremiumWithCredit)) }
+      : {}),
   };
 }
 
@@ -181,6 +227,8 @@ app.post('/api/leads', async (req, res) => {
   }
 
   res.status(201).json({ ok: true, lead });
+  // Fire-and-forget email notification
+  sendLeadNotification(lead, body);
 });
 
 // Generic user-input submission endpoint

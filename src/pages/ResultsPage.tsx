@@ -183,21 +183,6 @@ export default function ResultsPage() {
             </div>
 
             <section className="surface-card p-6 md:p-8 mb-8">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="h-12 w-12 rounded-2xl bg-accent/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-accent" />
-                </div>
-                <h2 className="text-2xl font-bold text-heading">Household details</h2>
-              </div>
-              <div className="grid md:grid-cols-2 gap-5">
-                <ResultFact label="ZIP code" value={String(zipCode)} />
-                <ResultFact label="Household" value={`${inputs.householdSize || 1} Member(s)`} />
-                <ResultFact label="Income" value={inputs.incomeRange || '$20,000 - $40,000'} />
-                <ResultFact label="Situation" value={formatSituation(inputs.situation)} />
-              </div>
-            </section>
-
-            <section className="surface-card p-6 md:p-8 mb-8">
               <div className="flex items-center gap-4 mb-7">
                 <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                   <TrendingUp className="h-6 w-6 text-primary" />
@@ -207,7 +192,7 @@ export default function ResultsPage() {
 
               <div className="space-y-5">
                 {plans.map((plan, index) => (
-                  <PlanCard key={plan.id || `${plan.name}-${index}`} plan={plan} isLowest={index === 0} />
+                  <PlanCard key={plan.id || `${plan.name}-${index}`} plan={plan} isLowest={index === 0} isCmsSource={results.source === 'cms-marketplace'} />
                 ))}
               </div>
             </section>
@@ -239,7 +224,7 @@ export default function ResultsPage() {
                 <p className="text-lg text-body mb-6">
                   Public search results don't include all private subsidies. Speak with a local pro to unlock the lowest possible rate.
                 </p>
-                <Button onClick={openAgents} size="lg" className="w-full sm:w-auto min-w-80 bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-200">
+                <Button onClick={openAgents} size="lg" className="w-full sm:w-auto min-w-80 bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-200">
                   <Users className="h-5 w-5" />
                   Find Nearby Agent
                   <ArrowRight className="h-5 w-5" />
@@ -295,7 +280,7 @@ export default function ResultsPage() {
                   <p className="text-body mt-1">Public search results don't include all private subsidies.</p>
                 </div>
               </div>
-              <div className="mt-5 rounded-2xl bg-emerald-500 px-5 py-4 text-center font-bold text-white flex items-center justify-center gap-3 hover:bg-emerald-600 transition-colors">
+              <div className="mt-5 rounded-2xl bg-green-500 px-5 py-4 text-center font-bold text-white flex items-center justify-center gap-3 hover:bg-green-600 transition-colors">
                 Find Nearby Agent
                 <ArrowRight className="h-5 w-5" />
               </div>
@@ -335,20 +320,47 @@ function ResultFact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PlanCard({ plan, isLowest }: { plan: MarketplacePlan; isLowest: boolean }) {
+function PlanCard({ plan, isLowest, isCmsSource }: { plan: MarketplacePlan; isLowest: boolean; isCmsSource: boolean }) {
+  const hasTaxCredit = isCmsSource && plan.premiumWithCredit !== undefined;
+  const taxCredit = hasTaxCredit ? plan.premium - (plan.premiumWithCredit ?? plan.premium) : 0;
+  const netPremium = hasTaxCredit ? (plan.premiumWithCredit ?? plan.premium) : plan.premium;
+
   return (
     <article className={cn('rounded-3xl border p-5 md:p-6', isLowest ? 'border-primary/30 bg-primary/5' : 'border-border bg-background/70')}>
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Badge tone="issuer">{plan.issuer}</Badge>
         <Badge tone={plan.metalLevel}>{plan.metalLevel}</Badge>
         {isLowest && <Badge tone="lowest">Lowest price</Badge>}
+        {hasTaxCredit && taxCredit > 0 && (
+          <span className="rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wide bg-green-100 text-green-700 border border-green-200">
+            Tax Credit Applied
+          </span>
+        )}
       </div>
       <h3 className="text-2xl font-bold text-heading mb-5">{plan.name}</h3>
-      <div className="grid grid-cols-3 gap-4">
-        <PlanMetric label="Monthly" value={`$${formatMoney(plan.premium)}`} highlight />
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="border-r border-border pr-4">
+          <p className="text-xs md:text-sm font-bold uppercase text-muted-foreground mb-1">Monthly</p>
+          {hasTaxCredit && taxCredit > 0 ? (
+            <>
+              <p className="text-4xl md:text-5xl font-bold text-primary">
+                ${formatMoney(netPremium)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 line-through">${formatMoney(plan.premium)}/mo</p>
+              <p className="text-xs text-green-600 font-semibold mt-0.5">${formatMoney(taxCredit)}/mo tax credit</p>
+            </>
+          ) : (
+            <p className="text-4xl md:text-5xl font-bold text-primary">${formatMoney(plan.premium)}</p>
+          )}
+        </div>
         <PlanMetric label="Deductible" value={`$${formatMoney(plan.deductible)}`} />
         <PlanMetric label="Type" value={plan.type || 'Plan'} />
       </div>
+      {hasTaxCredit && taxCredit > 0 && (
+        <div className="rounded-xl bg-green-50 border border-green-100 px-4 py-2.5 text-sm text-green-700">
+          <span className="font-semibold">Estimated savings overview:</span> Based on your income, you may qualify for a <span className="font-bold">${formatMoney(taxCredit)}/mo premium tax credit</span> — lowering your cost from <span className="line-through">${formatMoney(plan.premium)}</span> to <span className="font-bold">${formatMoney(netPremium)}/mo</span>.
+        </div>
+      )}
     </article>
   );
 }

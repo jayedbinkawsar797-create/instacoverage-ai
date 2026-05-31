@@ -81,6 +81,7 @@ export interface MarketplacePlan {
   type: string;
   premium: number;
   deductible: number;
+  premiumWithCredit?: number; // post-APTC premium from CMS API
 }
 
 export interface AgentProfile {

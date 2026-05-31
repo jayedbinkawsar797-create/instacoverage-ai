@@ -15,8 +15,8 @@ export function Header() {
             <Calculator className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-foreground leading-tight">InstaCoverage</span>
-            <span className="text-xs text-muted-foreground leading-tight">AI</span>
+            <span className="text-sm font-bold text-foreground leading-tight">Insta Coverage</span>
+            <span className="text-[10px] text-muted-foreground leading-tight">No. 1 Health Coverage AI Calculator</span>
           </div>
         </Link>
         
